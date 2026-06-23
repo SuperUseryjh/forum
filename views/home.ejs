@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>首页</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>论坛首页</h1>
+    <nav>
+    <% if (typeof user !== 'undefined' && user) { %>
+        当前用户：<strong><%= user.username %></strong>
+        <a href="/chat">发消息</a>
+        <a href="/profile">用户中心</a>
+        <a href="/forum">论坛</a>
+        <a href="/logout">退出登录</a>
+    <% } else { %>
+        <a href="/register">注册</a>
+        <a href="/login">登录</a>
+    <% } %>
+    </nav>
+</div>
+</body>
+</html>

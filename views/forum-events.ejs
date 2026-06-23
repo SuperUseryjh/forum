@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论坛 · 事件</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>论坛 · 事件</h1>
+    <nav>
+        <a href="/forum">看帖</a>
+        <a href="/forum/post">发帖</a>
+        <a href="/forum/events">事件（<%= unreadCount > 0 ? unreadCount + ' 未查收' : '无' %>）</a>
+        <a href="/profile">用户中心</a>
+        <a href="/logout">退出登录</a>
+    </nav>
+
+    <form method="post" action="/api/mark_events_read" class="mb-4">
+        <button type="submit" class="btn btn-primary">查收全部（标记已读）</button>
+    </form>
+
+    <div class="card" style="padding:0; overflow:hidden;">
+        <% for (const event of events) { %>
+            <% 
+                var typeText = { reply: '回复', like: '点赞', unlike: '取消赞' }[event.type] || event.type;
+            %>
+            <div class="event-item">
+                <% if (!event.is_read) { %><span class="event-unread">[未读]</span> <% } %>
+                <span class="feed-type"><%= q(typeText) %></span>
+                来自 <a href="/user/<%= encodeURIComponent(event.from_user || '') %>"><%= q(event.from_user || '') %></a>
+                <% if (event.content) { %>：<span class="text-secondary"><%= (event.content || '').replace(/\n/g, '<br>') %></span><% } %>
+                · <a href="/forum/post/<%= event.post_id %>">去帖子</a>
+            </div>
+        <% } %>
+        <% if (events.length === 0) { %>
+            <div class="text-secondary" style="padding:16px;">暂无事件。</div>
+        <% } %>
+    </div>
+
+    <div class="link-actions mt-4">
+        <a href="/">返回首页</a>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,4 @@
+# Bun configuration
+[test]
+# Force single-threaded test execution to avoid database singleton conflicts
+threads = 1

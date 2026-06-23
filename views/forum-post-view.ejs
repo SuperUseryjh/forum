@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= q(post.title) %></title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+    <nav>
+        <a href="/forum">看帖</a>
+        <a href="/forum/post">发帖</a>
+        <a href="/forum/events">事件（<%= unreadCount > 0 ? unreadCount + ' 未查收' : '无' %>）</a>
+        <a href="/profile">用户中心</a>
+        <a href="/logout">退出登录</a>
+    </nav>
+
+    <div class="floor" id="floor-1">
+        <div class="floor-header">
+            <span class="floor-num">1楼</span>
+            <a href="/user/<%= encodeURIComponent(post.author) %>" class="floor-author"><%= q(post.author) %></a>
+            <span class="floor-time"><%= formatMessageTime(post.created_at) %></span>
+        </div>
+        <div class="floor-content"><%= (post.content || '').replace(/\n/g, '<br>') %></div>
+        <div class="floor-actions">
+            <button type="button" class="btn-like" data-floor="1" data-liked="<%= (likes[1] && likes[1].includes(user.username)) ? '1' : '0' %>">
+                👍 <%= (likes[1] && likes[1].includes(user.username)) ? '取消赞' : '赞' %> (<%= (likes[1] || []).length %>)
+            </button>
+            <button type="button" class="btn-quote" data-floor="1" data-user="<%= q(post.author) %>">引用</button>
+        </div>
+    </div>
+
+    <% for (const floor of post.floors) { %>
+        <div class="floor" id="floor-<%= floor.floor_num %>">
+            <div class="floor-header">
+                <span class="floor-num"><%= floor.floor_num %>楼</span>
+                <% if (floor.quoted_floor && floor.quoted_user) { %>
+                    <span class="text-secondary">回复<%= floor.quoted_floor %>楼(<%= q(floor.quoted_user) %>）</span>
+                <% } %>
+                <a href="/user/<%= encodeURIComponent(floor.author) %>" class="floor-author"><%= q(floor.author) %></a>
+                <span class="floor-time"><%= formatMessageTime(floor.time) %></span>
+            </div>
+            <div class="floor-content"><%= (floor.content || '').replace(/\n/g, '<br>') %></div>
+            <% const floorLikes = likes[floor.floor_num] || []; %>
+            <div class="floor-actions">
+                <button type="button" class="btn-like" data-floor="<%= floor.floor_num %>" data-liked="<%= floorLikes.includes(user.username) ? '1' : '0' %>">
+                    👍 <%= floorLikes.includes(user.username) ? '取消赞' : '赞' %> (<%= floorLikes.length %>)
+                </button>
+                <button type="button" class="btn-quote" data-floor="<%= floor.floor_num %>" data-user="<%= q(floor.author) %>">引用</button>
+            </div>
+        </div>
+    <% } %>
+
+    <div class="card mt-4">
+        <div class="mb-2">
+            引用：<span id="quote-info" class="text-secondary">无</span>
+            <button type="button" id="btn-clear-quote" class="btn btn-sm">解除引用</button>
+        </div>
+        <div class="form-group">
+            <textarea id="floor-content" rows="4" placeholder="回复内容..." required></textarea>
+        </div>
+        <button type="button" id="btn-submit-floor" class="btn btn-primary">发送回复</button>
+    </div>
+
+    <div class="link-actions mt-4">
+        <a href="/">返回首页</a>
+    </div>
+</div>
+
+<script>
+(function() {
+    var postId = '<%= post.id %>';
+    var quoteFloor = 0, quoteUser = '';
+
+    function esc(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    document.querySelectorAll('.btn-like').forEach(function(btn) {
+        btn.onclick = function() {
+            var floor = parseInt(btn.getAttribute('data-floor'), 10);
+            var isLiked = btn.getAttribute('data-liked') === '1';
+            var api = isLiked ? '/api/unlike' : '/api/like';
+            var fd = new FormData();
+            fd.append('post_id', postId);
+            fd.append('floor', floor);
+            var x = new XMLHttpRequest();
+            x.open('POST', api);
+            x.onload = function() {
+                try {
+                    var res = JSON.parse(x.responseText);
+                    if (res.ok) location.reload();
+                } catch(e) {}
+            };
+            x.send(fd);
+        };
+    });
+
+    document.querySelectorAll('.btn-quote').forEach(function(btn) {
+        btn.onclick = function() {
+            quoteFloor = parseInt(btn.getAttribute('data-floor'), 10);
+            quoteUser = btn.getAttribute('data-user') || '';
+            document.getElementById('quote-info').textContent = quoteUser ? '回复' + quoteFloor + '楼(' + quoteUser + ')' : '无';
+        };
+    });
+
+    document.getElementById('btn-clear-quote').onclick = function() {
+        quoteFloor = 0;
+        quoteUser = '';
+        document.getElementById('quote-info').textContent = '无';
+    };
+
+    document.getElementById('btn-submit-floor').onclick = function() {
+        var content = document.getElementById('floor-content').value.trim();
+        if (!content) return;
+        var fd = new FormData();
+        fd.append('post_id', postId);
+        fd.append('content', content);
+        fd.append('ajax', '1');
+        if (quoteFloor) {
+            fd.append('quoted_floor', quoteFloor);
+            fd.append('quoted_user', quoteUser);
+        }
+        var x = new XMLHttpRequest();
+        x.open('POST', '/api/add_floor');
+        x.onload = function() {
+            try {
+                var res = JSON.parse(x.responseText);
+                if (res.ok) {
+                    document.getElementById('floor-content').value = '';
+                    quoteFloor = 0;
+                    quoteUser = '';
+                    document.getElementById('quote-info').textContent = '无';
+                    location.reload();
+                } else if (res.error) alert(res.error);
+            } catch(e) {}
+        };
+        x.send(fd);
+    };
+})();
+</script>
+</body>
+</html>

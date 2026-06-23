@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论坛 · 看帖</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>论坛 · 看帖</h1>
+    <nav>
+        当前用户：<strong><%= q(user.username) %></strong>
+        <a href="/forum">看帖</a>
+        <a href="/forum/post">发帖</a>
+        <a href="/forum/events">事件（<%= unreadCount > 0 ? unreadCount + ' 未查收' : '无' %>）</a>
+        <a href="/profile">用户中心</a>
+        <a href="/logout">退出登录</a>
+    </nav>
+
+    <% if (posts.length === 0) { %>
+        <div class="card text-secondary">暂无帖子，请发帖。</div>
+    <% } else { %>
+        <div class="card" style="padding:0; overflow:hidden;">
+            <% for (const post of posts) { %>
+                <a href="/forum/post/<%= post.id %>" class="post-item">
+                    <div class="post-title"><%= q(post.title) %></div>
+                    <div class="post-meta">
+                        <%= post.like_count %> 赞 · <%= post.floor_count %> 楼 · <%= q(post.author) %>
+                        <% const timeStr = formatMessageTime(post.create_time); %>
+                        <% if (timeStr) { %> · <%= timeStr %><% } %>
+                        <% 
+                            var lastTime = post.last_time;
+                            var mins = lastTime ? Math.max(0, Math.floor((Date.now()/1000 - lastTime) / 60)) : 0;
+                            var minsText = mins === 0 ? '刚刚' : mins + '分钟前';
+                        %>
+                        <% if (post.last_author && post.last_author !== post.author) { %>
+                            · <%= minsText %> <%= q(post.last_author) %> 回复
+                        <% } %>
+                    </div>
+                </a>
+            <% } %>
+        </div>
+    <% } %>
+
+    <% if (totalPages > 1) { %>
+        <div class="pagination">
+            <% for (let i = 1; i <= totalPages; i++) { %>
+                <% if (i === page) { %>
+                    <strong><%= i %></strong>
+                <% } else { %>
+                    <a href="/forum?p=<%= i %>"><%= i %></a>
+                <% } %>
+            <% } %>
+        </div>
+    <% } %>
+
+    <div class="link-actions">
+        <a href="/">返回首页</a>
+    </div>
+</div>
+</body>
+</html>

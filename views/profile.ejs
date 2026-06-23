@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户中心</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>用户中心</h1>
+    <nav>
+        当前用户：<strong><%= q(user.username) %></strong>
+        <a href="/chat">发消息</a>
+        <a href="/forum">论坛</a>
+        <a href="/user/<%= q(user.username) %>">自己的主页</a>
+        <a href="/logout">退出登录</a>
+    </nav>
+
+    <% if (err === 'empty_username') { %>
+        <div class="alert alert-danger">用户名不能为空。</div>
+    <% } else if (err === 'invalid_chars') { %>
+        <div class="alert alert-danger">用户名不能包含 "_"、"/"、"*"。</div>
+    <% } else if (err === 'username_exists') { %>
+        <div class="alert alert-danger">用户名已存在。</div>
+    <% } else if (err === 'username_length') { %>
+        <div class="alert alert-danger">用户名长度需在 2-20 之间。</div>
+    <% } %>
+
+    <div class="card">
+        <h3>修改用户名</h3>
+        <form method="post" action="/api/change_username">
+            <div class="form-group">
+                <label>新用户名</label>
+                <input type="text" name="new_username" value="<%= q(user.username) %>" required minlength="2" maxlength="20">
+            </div>
+            <button type="submit" class="btn btn-primary">修改用户名</button>
+        </form>
+    </div>
+
+    <div class="card mt-4">
+        <h3>个性签名</h3>
+        <form method="post" action="/api/set_signature">
+            <div class="form-group">
+                <textarea name="signature" rows="3" placeholder="写下你的个性签名..."><%= q(user.signature) %></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">保存签名</button>
+        </form>
+    </div>
+
+    <div class="card mt-4">
+        <h3>手动发动态</h3>
+        <form method="post" action="/api/add_feed">
+            <div class="form-group">
+                <textarea name="feed_text" rows="3" placeholder="说点什么..." required></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" name="goto" value="profile" class="btn btn-primary">发送并留在用户中心</button>
+                <button type="submit" name="goto" value="home" class="btn">发送到自己的主页</button>
+            </div>
+        </form>
+        <% if (typeof feed_err !== 'undefined' && feed_err === 'empty') { %>
+            <div class="alert alert-danger mt-2">动态内容不能为空。</div>
+        <% } %>
+    </div>
+
+    <div class="link-actions mt-4">
+        <a href="/">返回首页</a>
+    </div>
+</div>
+</body>
+</html>

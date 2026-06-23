@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发消息</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>私聊</h1>
+    <nav>
+        当前用户：<strong><%= q(user.username) %></strong>
+        <a href="/profile">用户中心</a>
+        <a href="/">首页</a>
+        <a href="/logout">退出登录</a>
+    </nav>
+
+    <% if (err === 'user_not_found') { %>
+        <div class="alert alert-danger">该用户名不存在。</div>
+    <% } else if (err === 'self') { %>
+        <div class="alert alert-danger">不能和自己私聊。</div>
+    <% } else if (err === 'no_user') { %>
+        <div class="alert alert-danger">请输入用户名。</div>
+    <% } %>
+
+    <form method="post" action="/api/start_chat" class="card mb-4">
+        <div class="form-group">
+            <label>开启新私聊</label>
+            <input type="text" name="other_username" placeholder="输入已存在的用户名" required>
+        </div>
+        <button type="submit" class="btn btn-primary">开启</button>
+    </form>
+
+    <div class="chat-container">
+        <div class="chat-sidebar">
+            <h3>私聊列表</h3>
+            <div id="chat-list-wrap">
+                <% if (sessions.length === 0) { %>
+                    <div class="text-secondary">（暂无私聊）</div>
+                <% } else { %>
+                    <% for (const session of sessions) { %>
+                        <div class="chat-session <%= session.other === selectedChat ? 'active' : '' %>">
+                            <a href="/chat?chat=<%= q(session.other) %>"><%= q(session.other) %></a>
+                            <% if (session.signature) { %>
+                                <div class="text-secondary" style="font-size:11px;"><%= q(session.signature) %></div>
+                            <% } %>
+                            <% const minsText = minutesAgoText(session.last_other_msg_ts); %>
+                            <% if (minsText) { %>
+                                <div class="text-secondary" style="font-size:11px;"><%= q(minsText) %></div>
+                            <% } %>
+                        </div>
+                    <% } %>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="chat-main">
+            <% if (selectedChat) { %>
+                <div style="padding:12px 16px; border-bottom:1px solid var(--border);">
+                    与 <a href="/user/<%= q(selectedChat) %>"><strong><%= q(selectedChat) %></strong></a> 的私聊
+                </div>
+                <div id="chatdiv" class="chat-messages">加载中...</div>
+                <div class="chat-input">
+                    <textarea id="msg-input" placeholder="输入消息..." rows="2"></textarea>
+                    <button type="button" id="btn-send" class="btn btn-primary">发送</button>
+                </div>
+                <div style="padding:8px 12px; font-size:12px; color:var(--text-secondary); border-top:1px solid var(--border);">
+                    <label><input type="checkbox" id="autoscroll-cb" checked> 收到消息自动滚动到底</label>
+                </div>
+            <% } else { %>
+                <div class="text-secondary" style="padding:40px; text-align:center; flex:1;">
+                    请从左侧私聊列表选择或开启新私聊。
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <div class="link-actions mt-4">
+        <a href="/">返回首页</a>
+    </div>
+</div>
+
+<script>
+(function() {
+    var selectedChat = '<%= selectedChat %>';
+
+    function esc(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function formatMsgTime(ts) {
+        if (ts == null || ts <= 0) return '未知时间';
+        return new Date(ts * 1000).toLocaleString('zh-CN', {
+            timeZone: 'Asia/Shanghai',
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+        }).replace(/\//g, '-');
+    }
+
+    function minsAgoText(ts) {
+        if (ts == null || ts <= 0) return '';
+        var mins = Math.max(0, Math.floor((Date.now()/1000 - ts) / 60));
+        return mins === 0 ? '刚刚有对方消息' : mins + '分钟前有对方消息';
+    }
+
+    function refreshChatList() {
+        var x = new XMLHttpRequest();
+        x.open('GET', '/api/chat_list');
+        x.onload = function() {
+            try {
+                var r = JSON.parse(x.responseText);
+                if (r.error) return;
+                var html = '';
+                for (var i = 0; i < r.chats.length; i++) {
+                    var o = r.chats[i];
+                    var cls = o.other === selectedChat ? 'chat-session active' : 'chat-session';
+                    html += '<div class="' + cls + '"><a href="/chat?chat=' + esc(o.other) + '">' + esc(o.other) + '</a>';
+                    if (o.signature) html += '<div class="text-secondary" style="font-size:11px;">' + esc(o.signature) + '</div>';
+                    var mt = minsAgoText(o.last_other_msg_ts);
+                    if (mt) html += '<div class="text-secondary" style="font-size:11px;">' + esc(mt) + '</div>';
+                    html += '</div>';
+                }
+                if (!r.chats.length) html = '<div class="text-secondary">（暂无私聊）</div>';
+                var wrap = document.getElementById('chat-list-wrap');
+                if (wrap) wrap.innerHTML = html;
+            } catch(e) {}
+        };
+        x.send();
+    }
+
+    var lastMessagesSig = '';
+    function refreshMessages(forceScroll) {
+        if (!selectedChat) return;
+        var x = new XMLHttpRequest();
+        x.open('GET', '/api/chat_messages?chat=' + encodeURIComponent(selectedChat));
+        x.onload = function() {
+            try {
+                var r = JSON.parse(x.responseText);
+                if (r.error) return;
+                var div = document.getElementById('chatdiv');
+                if (!div) return;
+                var list = r.messages || [];
+                var sig = list.length + '_' + (list.length ? (list[list.length - 1].time || '') : '');
+                var changed = sig !== lastMessagesSig;
+                lastMessagesSig = sig;
+
+                var html = '';
+                for (var i = 0; i < list.length; i++) {
+                    var m = list[i];
+                    html += '<div class="msg">';
+                    html += '<div class="msg-from">' + esc(m.from_user || '') + ' · ' + esc(formatMsgTime(m.time)) + '</div>';
+                    html += '<div class="msg-text">' + esc(m.text || '').replace(/\n/g, '<br>') + '</div>';
+                    html += '</div>';
+                }
+                div.innerHTML = html;
+                if (forceScroll || (changed && document.getElementById('autoscroll-cb') && document.getElementById('autoscroll-cb').checked)) {
+                    div.scrollTop = div.scrollHeight;
+                }
+            } catch(e) {}
+        };
+        x.send();
+    }
+
+    if (selectedChat) {
+        refreshMessages(true);
+        setInterval(function() { refreshMessages(false); }, 3000);
+    }
+
+    setInterval(refreshChatList, 3000);
+
+    var btnSend = document.getElementById('btn-send');
+    if (btnSend) {
+        btnSend.onclick = function() {
+            var input = document.getElementById('msg-input');
+            var text = input && input.value ? input.value.trim() : '';
+            if (!text) return;
+
+            var fd = new FormData();
+            fd.append('chat', selectedChat);
+            fd.append('text', text);
+            fd.append('ajax', '1');
+
+            var x = new XMLHttpRequest();
+            x.open('POST', '/api/send_message');
+            x.onload = function() {
+                try {
+                    var r = JSON.parse(x.responseText);
+                    if (r.ok) {
+                        input.value = '';
+                        refreshMessages(true);
+                    } else if (r.error) alert(r.error);
+                } catch(e) {}
+            };
+            x.send(fd);
+        };
+    }
+})();
+</script>
+</body>
+</html>

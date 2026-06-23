@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户主页 · <%= q(viewUser.username) %></title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>用户主页 · <%= q(viewUser.username) %></h1>
+    <nav>
+        <a href="/forum">论坛</a>
+        <a href="/profile">用户中心</a>
+        <% if (viewUser.username !== currentUser.username) { %>
+            <form method="post" action="/api/start_chat" style="display:inline">
+                <input type="hidden" name="other_username" value="<%= q(viewUser.username) %>">
+                <button type="submit" class="btn btn-sm">发起私聊</button>
+            </form>
+        <% } %>
+        <a href="/logout">退出登录</a>
+    </nav>
+
+    <div class="card">
+        <h3>个性签名</h3>
+        <div style="white-space:pre-wrap; color:var(--text-secondary); padding:8px 0;">
+            <%= (viewUser.signature || '这个人很懒，什么都没写~').replace(/\n/g, '<br>') %>
+        </div>
+    </div>
+
+    <h3 class="mt-4">用户动态（新在上）</h3>
+    <div class="card" style="padding:0; overflow:hidden;">
+        <% const feedTypeText = { post: '发帖', reply: '回复', signature: '签名', manual: '动态' }; %>
+        <% if (feed.length === 0) { %>
+            <div class="text-secondary" style="padding:16px;">暂无动态。</div>
+        <% } else { %>
+            <% for (const item of feed) { %>
+                <div class="feed-item">
+                    <span class="feed-time"><%= formatMessageTime(item.time) %></span>
+                    <span class="feed-type"><%= q(feedTypeText[item.type] || item.type || '') %></span>
+                    <span class="feed-text text-secondary"><%= (item.text || '').replace(/\n/g, '<br>') %></span>
+                    <% if (item.link) { %>
+                        <a href="<%= q(item.link) %>" class="btn btn-sm">查看</a>
+                    <% } %>
+                </div>
+            <% } %>
+        <% } %>
+    </div>
+
+    <div class="link-actions mt-4">
+        <a href="/">返回首页</a>
+    </div>
+</div>
+</body>
+</html>

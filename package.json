@@ -1,0 +1,26 @@
+{
+  "name": "forum",
+  "version": "1.0.0",
+  "description": "论坛",
+  "main": "src/app.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/app.ts",
+    "start": "bun src/app.ts",
+    "test": "bun test",
+    "test:ci": "bun test --coverage"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "ejs": "^3.1.10",
+    "jsonwebtoken": "^9.0.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/ejs": "^3.1.5",
+    "typescript": "^6.0.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
